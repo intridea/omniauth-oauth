@@ -107,7 +107,7 @@ describe "OmniAuth::Strategies::OAuth" do
 
     context "bad gateway (or any 5xx) for access_token" do
       before do
-        stub_request(:post, "https://api.example.org/oauth/access_token")  .
+        stub_request(:post, "https://api.example.org/oauth/access_token").
           to_raise(::Net::HTTPFatalError.new('502 "Bad Gateway"', nil))
         get "/auth/example.org/callback", {:oauth_verifier => "dudeman"}, "rack.session" => {"oauth" => {"example.org" => {"callback_confirmed" => true, "request_token" => "yourtoken", "request_secret" => "yoursecret"}}}
       end
@@ -120,7 +120,7 @@ describe "OmniAuth::Strategies::OAuth" do
 
     context "SSL failure" do
       before do
-        stub_request(:post, "https://api.example.org/oauth/access_token")  .
+        stub_request(:post, "https://api.example.org/oauth/access_token").
           to_raise(::OpenSSL::SSL::SSLError.new("SSL_connect returned=1 errno=0 state=SSLv3 read server certificate B: certificate verify failed"))
         get "/auth/example.org/callback", {:oauth_verifier => "dudeman"}, "rack.session" => {"oauth" => {"example.org" => {"callback_confirmed" => true, "request_token" => "yourtoken", "request_secret" => "yoursecret"}}}
       end
@@ -137,6 +137,19 @@ describe "OmniAuth::Strategies::OAuth" do
       stub_request(:post, "https://api.example.org/oauth/access_token").
         to_return(:body => "oauth_token=yourtoken&oauth_token_secret=yoursecret")
       get "/auth/example.org/callback", {:oauth_verifier => "dudeman"}, "rack.session" => {}
+    end
+
+    it "should call fail! with :session_expired" do
+      expect(last_request.env["omniauth.error"]).to be_kind_of(::OmniAuth::NoSessionError)
+      last_request.env["omniauth.error.type"] = :session_expired
+    end
+  end
+
+  describe "/auth/{name}/callback with wrong session" do
+    before do
+      stub_request(:post, "https://api.example.org/oauth/access_token").
+        to_return(:body => "oauth_token=yourtoken&oauth_token_secret=yoursecret")
+      get "/auth/example.org/callback", {:oauth_verifier => "dudeman"}, "rack.session" => {"oauth" => {"different-example.org" => {"callback_confirmed" => true}}}
     end
 
     it "should call fail! with :session_expired" do
